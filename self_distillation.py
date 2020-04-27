@@ -32,9 +32,24 @@ class Net(nn.Module):
         return x
 
 def cross_entropy_soft(predicted, target):
+    """
+    Cross Entropy loss for soft labels
+    :param predicted:
+    :param target:
+    :return:
+    """
     return -(target * torch.log(predicted)).sum(dim=1).mean()
 
 def combined_loss(output, target, soft_target, alpha):
+    """
+    Returns a combined loss which has two parts : A soft cross entropy loss based on previous iterations's model output
+    and a cross entropy loss based on the ground truth. The weighting is achieved via the hyperparameter alpha.
+    :param output:
+    :param target:
+    :param soft_target:
+    :param alpha:
+    :return:
+    """
     hard_loss = F.cross_entropy(output, target)
     output = F.softmax(output, dim=1)
     soft_target = F.softmax(soft_target, dim=1)
@@ -44,6 +59,16 @@ def combined_loss(output, target, soft_target, alpha):
 
 
 def distillation_loss(target, output, teacher, data, device, alpha):
+    """
+
+    :param target: ground truth , shape (Nx1)
+    :param output: predicted logits, shape (NxK)
+    :param teacher: model from previous iteration
+    :param data: data corresponding to ground truth, shape (NxD)
+    :param device:
+    :param alpha: hyperparameter for loss weighting
+    :return:
+    """
     if teacher is None:
         loss = F.cross_entropy(output, target)
         #print("Hard label loss ", loss.item())
@@ -63,6 +88,22 @@ def distillation_loss(target, output, teacher, data, device, alpha):
     return loss
 
 def self_distillation_train(model, train_loader, device, optimizer, epochs, teacher, test_loader, log_every, alpha, step):
+    """
+    Self Distillation training loop which uses output from previous distillation iteration as ground truth for the current
+    distillation round.
+
+    :param model:
+    :param train_loader:
+    :param device:
+    :param optimizer:
+    :param epochs:
+    :param teacher:
+    :param test_loader:
+    :param log_every:
+    :param alpha:
+    :param step:
+    :return:
+    """
     model.train()
     mx_test_acc = 0.0
     for epoch in range(epochs):
@@ -115,6 +156,14 @@ def train_evaluate(model, train_loader, device):
 
 
 def test(model, test_loader, device, distilled):
+    """
+    Evaluates the model on the test dataset
+    :param model:
+    :param test_loader:
+    :param device:
+    :param distilled:
+    :return: test_loss, test_acc
+    """
     model.eval()
     test_loss = 0
     correct = 0
@@ -139,7 +188,7 @@ def test(model, test_loader, device, distilled):
 
 def get_optimizer(optimizer_name, model, lr, momentum):
     """
-
+    Returns an optimizer based on the input.
     :param optimizer_name:
     :return:
     """
@@ -175,7 +224,8 @@ def main(args):
     model = Net()
     #model.load_state_dict(torch.load('teacher_MLP_test.pth.tar'))
     #optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=5e-4)
-    optimizer = get_optimizer(args.optimizer, model, args.lr, args.momentum)
+    #optimizer = get_optimizer(args.optimizer, model, args.lr, args.momentum)
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
 
